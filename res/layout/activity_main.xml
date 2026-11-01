@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#090A0E"
+    android:weightSum="100">
+
+    <!-- ========================================================
+         TOP 4%: COMPACT HUD BAR (REDUCED FOR MINIMAL OVERHEAD)
+         Left: Score | Right: Next piece (no title) + Pause icon
+         ======================================================== -->
+    <LinearLayout
+        android:id="@+id/top_hud_bar"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="4"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:background="#090A0E">
+
+        <!-- Left: Score Readout -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SCORE "
+                android:textColor="#64748B"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05" />
+
+            <TextView
+                android:id="@+id/txt_score"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="#FFD600"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <!-- Flexible Spacer -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <!-- Right: Next Piece (NO TITLE) + Pause Icon -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <!-- Next Piece Preview (Clean block preview without text) -->
+            <com.infinix.tetrispro.NextPieceView
+                android:id="@+id/next_piece_view"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginEnd="8dp" />
+
+            <!-- Pause Icon -->
+            <ImageButton
+                android:id="@+id/btn_pause"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="@drawable/btn_round_bg"
+                android:src="@android:drawable/ic_media_pause"
+                android:contentDescription="Pause" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Thin 1px divider between Top HUD and Game -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:background="#1A1D2A" />
+
+    <!-- ========================================================
+         MIDDLE 80%: FULL WIDTH 100% EDGE-TO-EDGE GAME CANVAS
+         ======================================================== -->
+    <com.infinix.tetrispro.TetrisView
+        android:id="@+id/tetris_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="80" />
+
+    <!-- Thin 1px divider between Game and Controls -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:background="#1E2230" />
+
+    <!-- ========================================================
+         BOTTOM 16%: ERGONOMIC EXPANDED SQUARE CONTROLS
+         All 5 Buttons are dynamically sized to max square width (~72-76dp)
+         Centered with generous top & bottom margins
+         ======================================================== -->
+    <LinearLayout
+        android:id="@+id/bottom_controls_bar"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="16"
+        android:orientation="horizontal"
+        android:background="#0D0E14"
+        android:gravity="center"
+        android:paddingVertical="8dp"
+        android:paddingHorizontal="4dp">
+
+        <!-- 1. LEFT ARROW (Dynamic Square) -->
+        <com.infinix.tetrispro.SquareImageButton
+            android:id="@+id/btn_left"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="2.5dp"
+            android:background="@drawable/btn_row_left_bg"
+            android:src="@drawable/ic_arrow_left"
+            android:scaleType="centerInside"
+            android:padding="8dp"
+            android:contentDescription="Left" />
+
+        <!-- 2. RIGHT ARROW (Dynamic Square) -->
+        <com.infinix.tetrispro.SquareImageButton
+            android:id="@+id/btn_right"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="2.5dp"
+            android:background="@drawable/btn_row_right_bg"
+            android:src="@drawable/ic_arrow_right"
+            android:scaleType="centerInside"
+            android:padding="8dp"
+            android:contentDescription="Right" />
+
+        <!-- 3. DOWN ARROW (Dynamic Square) -->
+        <com.infinix.tetrispro.SquareImageButton
+            android:id="@+id/btn_down"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="2.5dp"
+            android:background="@drawable/btn_down_bg"
+            android:src="@drawable/ic_arrow_down"
+            android:scaleType="centerInside"
+            android:padding="8dp"
+            android:contentDescription="Down" />
+
+        <!-- 4. HARD DROP (Dynamic Square) -->
+        <com.infinix.tetrispro.SquareImageButton
+            android:id="@+id/btn_drop"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="2.5dp"
+            android:background="@drawable/btn_drop_bg"
+            android:src="@drawable/ic_drop"
+            android:scaleType="centerInside"
+            android:padding="8dp"
+            android:contentDescription="Hard Drop" />
+
+        <!-- 5. ROTATE (Dynamic Square) -->
+        <com.infinix.tetrispro.SquareImageButton
+            android:id="@+id/btn_rotate"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="2.5dp"
+            android:background="@drawable/btn_rotate_bg"
+            android:src="@drawable/ic_rotate"
+            android:scaleType="centerInside"
+            android:padding="8dp"
+            android:contentDescription="Rotate" />
+
+    </LinearLayout>
+
+</LinearLayout>

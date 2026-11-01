@@ -1,0 +1,23 @@
+# Build & Generated outputs
+build/
+*.keystore
+*.idsig
+*.pyc
+__pycache__/
+
+# Scratch scripts & temporary web server
+serve.py
+generate_*.py
+update_*.py
+ambient_chill.ogg
+arcade_stereo.wav
+theme.wav
+track*.wav
+original_gb.mp3
+index.html
+manifest.json
+sw.js
+download.html
+preview.html
+qr.svg
+icon_multi_opt*.png
