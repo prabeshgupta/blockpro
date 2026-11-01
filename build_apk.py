@@ -136,9 +136,6 @@ def main():
         "--verbose", final_apk
     ], "Verifying native APK signatures")
 
-    # Also generate backward compatibility copy
-    shutil.copyfile(final_apk, os.path.join(PROJECT_DIR, "TetrisPro-Infinix-Hot60Pro.apk"))
-
     print("\n" + "="*60)
     print("100% PURE NATIVE ANDROID APK BUILT AND SIGNED SUCCESSFULLY!")
     print(f"Output File: {final_apk}")
