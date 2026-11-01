@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="#090A0E"
+    android:fitsSystemWindows="false"
     android:weightSum="100">
 
     <!-- ========================================================
-         TOP 4%: COMPACT HUD BAR (REDUCED FOR MINIMAL OVERHEAD)
+         TOP 4%: COMPACT HUD BAR (ZERO TOP GAP, TOTAL FULLSCREEN)
          Left: Score | Right: Next piece (no title) + Pause icon
          ======================================================== -->
     <LinearLayout
@@ -18,6 +20,7 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingHorizontal="16dp"
+        android:fitsSystemWindows="false"
         android:background="#090A0E">
 
         <!-- Left: Score Readout -->
@@ -47,7 +50,7 @@
                 android:fontFamily="monospace" />
         </LinearLayout>
 
-        <!-- Flexible Spacer -->
+        <!-- Flexible Spacer (Safely spans across center punch-hole camera) -->
         <View
             android:layout_width="0dp"
             android:layout_height="1dp"
@@ -114,7 +117,8 @@
         android:background="#0D0E14"
         android:gravity="center"
         android:paddingVertical="8dp"
-        android:paddingHorizontal="4dp">
+        android:paddingHorizontal="4dp"
+        android:fitsSystemWindows="false">
 
         <!-- 1. LEFT ARROW (Dynamic Square) -->
         <com.infinix.tetrispro.SquareImageButton

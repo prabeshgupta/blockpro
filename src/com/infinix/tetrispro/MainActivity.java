@@ -42,14 +42,51 @@ public class MainActivity extends Activity implements TetrisView.GameListener {
             requestWindowFeature(Window.FEATURE_NO_TITLE);
         } catch (Throwable ignored) {}
 
-        // Keep screen on & use notch edge-to-edge
+        // Strict 100% Fullscreen Window Flags - Zero Gaps, Total Edge-to-Edge
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN);
+
+        // Extend completely through display cutout / notch (top hole-punch)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            getWindow().getAttributes().layoutInDisplayCutoutMode =
-                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            WindowManager.LayoutParams lp = getWindow().getAttributes();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+            } else {
+                lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            }
+            getWindow().setAttributes(lp);
+        }
+
+        // Android 11-16 Edge-to-Edge: Decor does NOT fit system windows
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            getWindow().setDecorFitsSystemWindows(false);
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().setStatusBarColor(Color.TRANSPARENT);
+            getWindow().setNavigationBarColor(Color.TRANSPARENT);
         }
 
         setContentView(R.layout.activity_main);
+
+        // Consume all WindowInsets so the root layout expands from physical top to bottom
+        View root = findViewById(R.id.root_layout);
+        if (root != null) {
+            root.setFitsSystemWindows(false);
+            root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+                @Override
+                public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        return WindowInsets.CONSUMED;
+                    } else {
+                        return insets.consumeSystemWindowInsets();
+                    }
+                }
+            });
+        }
+
         hideSystemUI();
 
         sound = new NativeSound(this);
@@ -207,8 +244,26 @@ public class MainActivity extends Activity implements TetrisView.GameListener {
         final Dialog dialog = new Dialog(this, AlertDialog.THEME_DEVICE_DEFAULT_DARK);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setContentView(R.layout.dialog_level_slider);
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        
+        Window dw = dialog.getWindow();
+        if (dw != null) {
+            dw.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            // Prevent dialog from dropping activity's immersive fullscreen
+            dw.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
+            dw.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            dw.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                WindowManager.LayoutParams lp = dw.getAttributes();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+                } else {
+                    lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+                }
+                dw.setAttributes(lp);
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                dw.setDecorFitsSystemWindows(false);
+            }
         }
 
         final TextView txtLevel = dialog.findViewById(R.id.txt_dialog_level);
@@ -248,14 +303,20 @@ public class MainActivity extends Activity implements TetrisView.GameListener {
             @Override
             public void onClick(View v) {
                 dialog.dismiss();
+                hideSystemUI();
                 tetrisView.startNewGame(selectedLevel);
                 startMusic();
-                hideSystemUI();
             }
         });
 
         dialog.setCancelable(false);
         dialog.show();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
+            hideSystemUI(dialog.getWindow());
+        }
+        hideSystemUI();
     }
 
     @Override
@@ -298,31 +359,50 @@ public class MainActivity extends Activity implements TetrisView.GameListener {
                     }
                 });
                 builder.setCancelable(false);
-                builder.show();
+                AlertDialog d = builder.show();
+                if (d.getWindow() != null) {
+                    hideSystemUI(d.getWindow());
+                }
+                hideSystemUI();
             }
         });
     }
 
     private void hideSystemUI() {
+        hideSystemUI(getWindow());
+    }
+
+    private void hideSystemUI(Window window) {
+        if (window == null) return;
         try {
+            // Modern API 30+ (Android 11 - 16)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                WindowInsetsController controller = getWindow().getInsetsController();
+                window.setDecorFitsSystemWindows(false);
+                WindowInsetsController controller = window.getInsetsController();
                 if (controller != null) {
-                    controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
-                    controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
-                }
-            } else {
-                View decorView = getWindow().getDecorView();
-                if (decorView != null) {
-                    decorView.setSystemUiVisibility(
-                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_FULLSCREEN
+                    controller.hide(
+                        WindowInsets.Type.statusBars() 
+                        | WindowInsets.Type.navigationBars() 
+                        | WindowInsets.Type.systemBars()
+                    );
+                    controller.setSystemBarsBehavior(
+                        WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                     );
                 }
+            }
+
+            // Universal System UI Flags
+            View decorView = window.getDecorView();
+            if (decorView != null) {
+                decorView.setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_LOW_PROFILE
+                );
             }
         } catch (Throwable ignored) {}
     }
@@ -336,6 +416,13 @@ public class MainActivity extends Activity implements TetrisView.GameListener {
     @Override
     protected void onResume() {
         super.onResume();
+        hideSystemUI();
+        getWindow().getDecorView().post(new Runnable() {
+            @Override
+            public void run() {
+                hideSystemUI();
+            }
+        });
         if (tetrisView != null && !tetrisView.isPaused()) {
             startMusic();
         }
@@ -361,6 +448,12 @@ public class MainActivity extends Activity implements TetrisView.GameListener {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
             hideSystemUI();
+            getWindow().getDecorView().post(new Runnable() {
+                @Override
+                public void run() {
+                    hideSystemUI();
+                }
+            });
         }
     }
 }
