@@ -1,4 +1,4 @@
-# 🕹️ BlockPro — Pure Native Android Game
+# 🕹️ Block Pro — Pure Native Android Game
 
 A sleek, **100% Free, Zero Ads** pure native Android block puzzle game built in Java with hardware-accelerated Canvas rendering, responsive touch controls, dynamic square buttons, authentic arcade audio, and zero web wrappers.
 
@@ -14,7 +14,7 @@ A sleek, **100% Free, Zero Ads** pure native Android block puzzle game built in 
 
 <p align="center">
   <img src="screenshot_level.jpg" width="310" alt="Starting Level Selector" style="border-radius: 16px; margin-right: 12px;" />
-  <img src="screenshot_gameplay.jpg" width="310" alt="BlockPro Native Gameplay on Android" style="border-radius: 16px;" />
+  <img src="screenshot_gameplay.jpg" width="310" alt="Block Pro Native Gameplay on Android" style="border-radius: 16px;" />
 </p>
 
 ---
