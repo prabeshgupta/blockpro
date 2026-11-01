@@ -29,7 +29,7 @@ public class TetrisView extends SurfaceView implements SurfaceHolder.Callback, R
     private SurfaceHolder holder;
     private Thread gameThread;
     private volatile boolean running = false;
-    private boolean paused = false;
+    private volatile boolean paused = false;
 
     // Clean, crisp paints (NO gradients, NO blurry shadows)
     private final Paint blockPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -44,9 +44,9 @@ public class TetrisView extends SurfaceView implements SurfaceHolder.Callback, R
     private final List<Tetromino> nextQueue = new ArrayList<>();
     private final Random random = new Random();
 
-    private Tetromino currentPiece;
-    private int currentX;
-    private int currentY;
+    private volatile Tetromino currentPiece;
+    private volatile int currentX;
+    private volatile int currentY;
 
     private int score = 0;
     private int level = 1;
@@ -125,14 +125,18 @@ public class TetrisView extends SurfaceView implements SurfaceHolder.Callback, R
                     grid[r][c] = null;
                 }
             }
-            bag.clear();
-            nextQueue.clear();
+            synchronized (bag) {
+                bag.clear();
+            }
+            synchronized (nextQueue) {
+                nextQueue.clear();
+            }
             score = 0;
             this.level = startLevel;
             updateDropSpeed();
 
             if (listener != null) {
-                listener.onScoreChanged(score);
+                try { listener.onScoreChanged(score); } catch (Throwable ignored) {}
             }
 
             refillBag();
@@ -154,48 +158,74 @@ public class TetrisView extends SurfaceView implements SurfaceHolder.Callback, R
         dropInterval = speeds[Math.min(level - 1, speeds.length - 1)];
     }
 
-    private void refillBag() {
-        if (bag.isEmpty()) {
-            String[] types = new String[]{"I", "O", "T", "S", "Z", "J", "L"};
-            List<String> list = new ArrayList<>();
-            Collections.addAll(list, types);
-            Collections.shuffle(list, random);
-            for (String t : list) {
-                bag.add(Tetromino.create(t));
+    private synchronized void refillBag() {
+        synchronized (bag) {
+            if (bag.isEmpty()) {
+                String[] types = new String[]{"I", "O", "T", "S", "Z", "J", "L"};
+                List<String> list = new ArrayList<>();
+                Collections.addAll(list, types);
+                Collections.shuffle(list, random);
+                for (String t : list) {
+                    bag.add(Tetromino.create(t));
+                }
             }
         }
     }
 
-    private Tetromino getNextFromBag() {
-        refillBag();
-        return bag.remove(0);
+    private synchronized Tetromino getNextFromBag() {
+        synchronized (bag) {
+            refillBag();
+            if (bag.isEmpty()) {
+                return Tetromino.create("T");
+            }
+            return bag.remove(0);
+        }
     }
 
     private void spawnPiece() {
-        while (nextQueue.size() < 3) {
-            nextQueue.add(getNextFromBag());
-        }
-        currentPiece = nextQueue.remove(0);
-        currentX = (COLS - currentPiece.shape[0].length) / 2;
-        currentY = 0;
-
-        if (listener != null && !nextQueue.isEmpty()) {
-            listener.onNextPiece(nextQueue.get(0));
-        }
-
-        if (checkCollision(currentPiece.shape, currentX, currentY)) {
-            // Game Over
-            if (sound != null) sound.playGameOver();
-            vibrate(80);
-            if (listener != null) {
-                listener.onGameOver(score);
+        try {
+            synchronized (nextQueue) {
+                while (nextQueue.size() < 3) {
+                    nextQueue.add(getNextFromBag());
+                }
+                currentPiece = nextQueue.remove(0);
             }
-            currentPiece = null;
+            if (currentPiece == null || currentPiece.shape == null) return;
+
+            currentX = (COLS - currentPiece.shape[0].length) / 2;
+            currentY = 0;
+
+            if (listener != null) {
+                synchronized (nextQueue) {
+                    if (!nextQueue.isEmpty()) {
+                        try {
+                            listener.onNextPiece(nextQueue.get(0));
+                        } catch (Throwable ignored) {}
+                    }
+                }
+            }
+
+            if (checkCollision(currentPiece.shape, currentX, currentY)) {
+                // Game Over
+                if (sound != null) {
+                    try { sound.playGameOver(); } catch (Throwable ignored) {}
+                }
+                vibrate(80);
+                if (listener != null) {
+                    try {
+                        listener.onGameOver(score);
+                    } catch (Throwable ignored) {}
+                }
+                currentPiece = null;
+            }
+            lastDropTime = SystemClock.uptimeMillis();
+        } catch (Throwable t) {
+            t.printStackTrace();
         }
-        lastDropTime = SystemClock.uptimeMillis();
     }
 
     private boolean checkCollision(int[][] shape, int ox, int oy) {
+        if (shape == null) return true;
         int rows = shape.length;
         int cols = shape[0].length;
         for (int r = 0; r < rows; r++) {
@@ -213,10 +243,13 @@ public class TetrisView extends SurfaceView implements SurfaceHolder.Callback, R
 
     public void moveLeft() {
         synchronized (grid) {
-            if (currentPiece == null || paused) return;
-            if (!checkCollision(currentPiece.shape, currentX - 1, currentY)) {
+            Tetromino piece = currentPiece;
+            if (piece == null || piece.shape == null || paused) return;
+            if (!checkCollision(piece.shape, currentX - 1, currentY)) {
                 currentX--;
-                if (sound != null) sound.playMove();
+                if (sound != null) {
+                    try { sound.playMove(); } catch (Throwable ignored) {}
+                }
                 vibrate(8);
             }
         }
@@ -224,10 +257,13 @@ public class TetrisView extends SurfaceView implements SurfaceHolder.Callback, R
 
     public void moveRight() {
         synchronized (grid) {
-            if (currentPiece == null || paused) return;
-            if (!checkCollision(currentPiece.shape, currentX + 1, currentY)) {
+            Tetromino piece = currentPiece;
+            if (piece == null || piece.shape == null || paused) return;
+            if (!checkCollision(piece.shape, currentX + 1, currentY)) {
                 currentX++;
-                if (sound != null) sound.playMove();
+                if (sound != null) {
+                    try { sound.playMove(); } catch (Throwable ignored) {}
+                }
                 vibrate(8);
             }
         }
@@ -235,12 +271,17 @@ public class TetrisView extends SurfaceView implements SurfaceHolder.Callback, R
 
     public void softDrop() {
         synchronized (grid) {
-            if (currentPiece == null || paused) return;
-            if (!checkCollision(currentPiece.shape, currentX, currentY + 1)) {
+            Tetromino piece = currentPiece;
+            if (piece == null || piece.shape == null || paused) return;
+            if (!checkCollision(piece.shape, currentX, currentY + 1)) {
                 currentY++;
                 score += 1;
-                if (listener != null) listener.onScoreChanged(score);
-                if (sound != null) sound.playMove();
+                if (listener != null) {
+                    try { listener.onScoreChanged(score); } catch (Throwable ignored) {}
+                }
+                if (sound != null) {
+                    try { sound.playMove(); } catch (Throwable ignored) {}
+                }
                 vibrate(6);
                 lastDropTime = SystemClock.uptimeMillis();
             } else {
@@ -251,20 +292,23 @@ public class TetrisView extends SurfaceView implements SurfaceHolder.Callback, R
 
     public void rotatePiece() {
         synchronized (grid) {
-            if (currentPiece == null || paused) return;
-            int n = currentPiece.shape.length;
+            Tetromino piece = currentPiece;
+            if (piece == null || piece.shape == null || paused) return;
+            int n = piece.shape.length;
             int[][] rotated = new int[n][n];
             for (int r = 0; r < n; r++) {
                 for (int c = 0; c < n; c++) {
-                    rotated[c][n - 1 - r] = currentPiece.shape[r][c];
+                    rotated[c][n - 1 - r] = piece.shape[r][c];
                 }
             }
             int[] kicks = new int[]{0, -1, 1, -2, 2};
             for (int k : kicks) {
                 if (!checkCollision(rotated, currentX + k, currentY)) {
-                    currentPiece.shape = rotated;
+                    piece.shape = rotated;
                     currentX += k;
-                    if (sound != null) sound.playRotate();
+                    if (sound != null) {
+                        try { sound.playRotate(); } catch (Throwable ignored) {}
+                    }
                     vibrate(10);
                     return;
                 }
@@ -274,35 +318,45 @@ public class TetrisView extends SurfaceView implements SurfaceHolder.Callback, R
 
     public void hardDrop() {
         synchronized (grid) {
-            if (currentPiece == null || paused) return;
+            Tetromino piece = currentPiece;
+            if (piece == null || piece.shape == null || paused) return;
             int dropCount = 0;
-            while (!checkCollision(currentPiece.shape, currentX, currentY + 1)) {
+            while (!checkCollision(piece.shape, currentX, currentY + 1)) {
                 currentY++;
                 dropCount++;
             }
             score += dropCount * 2;
-            if (listener != null) listener.onScoreChanged(score);
-            if (sound != null) sound.playDrop();
+            if (listener != null) {
+                try { listener.onScoreChanged(score); } catch (Throwable ignored) {}
+            }
+            if (sound != null) {
+                try { sound.playDrop(); } catch (Throwable ignored) {}
+            }
             vibrate(20);
             lockPiece();
         }
     }
 
     private void lockPiece() {
-        int rows = currentPiece.shape.length;
-        int cols = currentPiece.shape[0].length;
+        Tetromino piece = currentPiece;
+        if (piece == null || piece.shape == null) return;
+
+        int rows = piece.shape.length;
+        int cols = piece.shape[0].length;
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
-                if (currentPiece.shape[r][c] != 0) {
+                if (piece.shape[r][c] != 0) {
                     int x = currentX + c;
                     int y = currentY + r;
                     if (y >= 0 && y < ROWS && x >= 0 && x < COLS) {
-                        grid[y][x] = currentPiece;
+                        grid[y][x] = piece;
                     }
                 }
             }
         }
-        if (sound != null) sound.playLand();
+        if (sound != null) {
+            try { sound.playLand(); } catch (Throwable ignored) {}
+        }
         vibrate(15);
         checkLines();
         spawnPiece();
@@ -310,7 +364,7 @@ public class TetrisView extends SurfaceView implements SurfaceHolder.Callback, R
 
     private void checkLines() {
         int cleared = 0;
-        for (int r = 0; r < ROWS; r++) {
+        for (int r = ROWS - 1; r >= 0; r--) {
             boolean full = true;
             for (int c = 0; c < COLS; c++) {
                 if (grid[r][c] == null) {
@@ -330,14 +384,20 @@ public class TetrisView extends SurfaceView implements SurfaceHolder.Callback, R
                 for (int c = 0; c < COLS; c++) {
                     grid[0][c] = null;
                 }
+                // Check this row again since above dropped down
+                r++;
             }
         }
 
         if (cleared > 0) {
             int[] pts = new int[]{0, 100, 300, 500, 800};
             score += pts[Math.min(cleared, 4)] * level;
-            if (listener != null) listener.onScoreChanged(score);
-            if (sound != null) sound.playClear(cleared);
+            if (listener != null) {
+                try { listener.onScoreChanged(score); } catch (Throwable ignored) {}
+            }
+            if (sound != null) {
+                try { sound.playClear(cleared); } catch (Throwable ignored) {}
+            }
             vibrate(cleared >= 4 ? 40 : 20);
         }
     }
@@ -345,8 +405,10 @@ public class TetrisView extends SurfaceView implements SurfaceHolder.Callback, R
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
         running = true;
-        gameThread = new Thread(this);
-        gameThread.start();
+        if (gameThread == null || !gameThread.isAlive()) {
+            gameThread = new Thread(this, "BlockProRenderThread");
+            gameThread.start();
+        }
     }
 
     @Override
@@ -362,115 +424,141 @@ public class TetrisView extends SurfaceView implements SurfaceHolder.Callback, R
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
         running = false;
-        try {
-            if (gameThread != null) gameThread.join();
-        } catch (InterruptedException ignored) {}
+        if (gameThread != null) {
+            gameThread.interrupt();
+            try {
+                gameThread.join(300);
+            } catch (InterruptedException ignored) {}
+            gameThread = null;
+        }
     }
 
     @Override
     public void run() {
         while (running) {
-            long now = SystemClock.uptimeMillis();
-            if (!paused && currentPiece != null) {
-                if (now - lastDropTime > dropInterval) {
-                    lastDropTime = now;
+            try {
+                long now = SystemClock.uptimeMillis();
+                if (!paused) {
                     synchronized (grid) {
-                        if (!checkCollision(currentPiece.shape, currentX, currentY + 1)) {
-                            currentY++;
-                        } else {
-                            lockPiece();
+                        Tetromino piece = currentPiece;
+                        if (piece != null && piece.shape != null) {
+                            if (now - lastDropTime > dropInterval) {
+                                lastDropTime = now;
+                                if (!checkCollision(piece.shape, currentX, currentY + 1)) {
+                                    currentY++;
+                                } else {
+                                    lockPiece();
+                                }
+                            }
                         }
                     }
                 }
-            }
 
-            // High precision smooth rendering loop
-            Canvas canvas = null;
-            try {
-                canvas = holder.lockCanvas();
-                if (canvas != null) {
-                    drawCleanGame(canvas);
+                // High precision smooth rendering loop protected by grid lock & try-catch
+                Canvas canvas = null;
+                try {
+                    canvas = holder.lockCanvas();
+                    if (canvas != null) {
+                        synchronized (grid) {
+                            drawCleanGame(canvas);
+                        }
+                    }
+                } catch (Throwable t) {
+                    // Ignore surface lock glitch and continue
+                } finally {
+                    if (canvas != null) {
+                        try {
+                            holder.unlockCanvasAndPost(canvas);
+                        } catch (Throwable ignored) {}
+                    }
                 }
-            } finally {
-                if (canvas != null) {
-                    holder.unlockCanvasAndPost(canvas);
-                }
-            }
 
-            try {
-                Thread.sleep(8); // ~120 FPS capable smooth loop
-            } catch (InterruptedException ignored) {}
+                try {
+                    Thread.sleep(8); // ~120 FPS capable smooth loop
+                } catch (InterruptedException e) {
+                    if (!running) break;
+                }
+            } catch (Throwable t) {
+                t.printStackTrace();
+            }
         }
     }
 
     /* Clean, Eye-Pleasing, Solid Matte Rendering (100% Width Edge-to-Edge) */
     private void drawCleanGame(Canvas canvas) {
-        // Solid matte deep slate background (NO gradients, NO ai slop)
-        canvas.drawColor(Color.parseColor("#090A0E"));
+        try {
+            // Solid matte deep slate background (NO gradients, NO ai slop)
+            canvas.drawColor(Color.parseColor("#090A0E"));
 
-        // Crisp, subtle grid lines spanning edge to edge
-        for (int c = 0; c <= COLS; c++) {
-            float x = c * blockWidth;
-            canvas.drawLine(x, 0, x, ROWS * blockHeight, gridPaint);
-        }
-        for (int r = 0; r <= ROWS; r++) {
-            float y = r * blockHeight;
-            canvas.drawLine(0, y, COLS * blockWidth, y, gridPaint);
-        }
-
-        // Locked Matrix Blocks
-        for (int r = 0; r < ROWS; r++) {
-            for (int c = 0; c < COLS; c++) {
-                if (grid[r][c] != null) {
-                    drawCleanBlock(canvas, c * blockWidth, r * blockHeight, blockWidth, blockHeight, grid[r][c], false);
-                }
+            // Crisp, subtle grid lines spanning edge to edge
+            for (int c = 0; c <= COLS; c++) {
+                float x = c * blockWidth;
+                canvas.drawLine(x, 0, x, ROWS * blockHeight, gridPaint);
             }
-        }
-
-        // Ghost Piece & Falling Piece
-        if (currentPiece != null) {
-            int ghostY = currentY;
-            while (!checkCollision(currentPiece.shape, currentX, ghostY + 1)) {
-                ghostY++;
+            for (int r = 0; r <= ROWS; r++) {
+                float y = r * blockHeight;
+                canvas.drawLine(0, y, COLS * blockWidth, y, gridPaint);
             }
 
-            int rows = currentPiece.shape.length;
-            int cols = currentPiece.shape[0].length;
-
-            // Draw Minimalist Ghost Piece (clean crisp outline)
-            for (int r = 0; r < rows; r++) {
-                for (int c = 0; c < cols; c++) {
-                    if (currentPiece.shape[r][c] != 0) {
-                        drawCleanBlock(canvas, (currentX + c) * blockWidth, (ghostY + r) * blockHeight, blockWidth, blockHeight, currentPiece, true);
+            // Locked Matrix Blocks
+            for (int r = 0; r < ROWS; r++) {
+                for (int c = 0; c < COLS; c++) {
+                    Tetromino block = grid[r][c];
+                    if (block != null) {
+                        drawCleanBlock(canvas, c * blockWidth, r * blockHeight, blockWidth, blockHeight, block, false);
                     }
                 }
             }
 
-            // Draw Active Piece
-            for (int r = 0; r < rows; r++) {
-                for (int c = 0; c < cols; c++) {
-                    if (currentPiece.shape[r][c] != 0) {
-                        drawCleanBlock(canvas, (currentX + c) * blockWidth, (currentY + r) * blockHeight, blockWidth, blockHeight, currentPiece, false);
+            // Ghost Piece & Falling Piece
+            Tetromino piece = currentPiece;
+            if (piece != null && piece.shape != null) {
+                int ghostY = currentY;
+                while (!checkCollision(piece.shape, currentX, ghostY + 1)) {
+                    ghostY++;
+                }
+
+                int rows = piece.shape.length;
+                int cols = piece.shape[0].length;
+
+                // Draw Minimalist Ghost Piece (clean crisp outline)
+                for (int r = 0; r < rows; r++) {
+                    for (int c = 0; c < cols; c++) {
+                        if (piece.shape[r][c] != 0) {
+                            drawCleanBlock(canvas, (currentX + c) * blockWidth, (ghostY + r) * blockHeight, blockWidth, blockHeight, piece, true);
+                        }
+                    }
+                }
+
+                // Draw Active Piece
+                for (int r = 0; r < rows; r++) {
+                    for (int c = 0; c < cols; c++) {
+                        if (piece.shape[r][c] != 0) {
+                            drawCleanBlock(canvas, (currentX + c) * blockWidth, (currentY + r) * blockHeight, blockWidth, blockHeight, piece, false);
+                        }
                     }
                 }
             }
-        }
 
-        // Subtle clean line clear flash
-        if (clearingRow >= 0) {
-            long elapsed = SystemClock.uptimeMillis() - clearStartTime;
-            if (elapsed < 140) {
-                Paint flashPaint = new Paint();
-                flashPaint.setColor(Color.WHITE);
-                flashPaint.setAlpha((int) ((1.0f - elapsed / 140f) * 200));
-                canvas.drawRect(0, clearingRow * blockHeight, COLS * blockWidth, (clearingRow + 1) * blockHeight, flashPaint);
-            } else {
-                clearingRow = -1;
+            // Subtle clean line clear flash
+            if (clearingRow >= 0) {
+                long elapsed = SystemClock.uptimeMillis() - clearStartTime;
+                if (elapsed < 140) {
+                    Paint flashPaint = new Paint();
+                    flashPaint.setColor(Color.WHITE);
+                    flashPaint.setAlpha((int) ((1.0f - elapsed / 140f) * 200));
+                    canvas.drawRect(0, clearingRow * blockHeight, COLS * blockWidth, (clearingRow + 1) * blockHeight, flashPaint);
+                } else {
+                    clearingRow = -1;
+                }
             }
+        } catch (Throwable t) {
+            t.printStackTrace();
         }
     }
 
     private void drawCleanBlock(Canvas canvas, float x, float y, float w, float h, Tetromino p, boolean isGhost) {
+        if (p == null) return;
         float r = 3.5f;
         blockRect.set(x + 1f, y + 1f, x + w - 1f, y + h - 1f);
 
@@ -504,26 +592,30 @@ public class TetrisView extends SurfaceView implements SurfaceHolder.Callback, R
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_DOWN:
-                touchStartX = event.getX();
-                touchStartY = event.getY();
-                touchStartTime = SystemClock.uptimeMillis();
-                return true;
-            case MotionEvent.ACTION_UP:
-                float dx = event.getX() - touchStartX;
-                float dy = event.getY() - touchStartY;
-                long dur = SystemClock.uptimeMillis() - touchStartTime;
+        try {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    touchStartX = event.getX();
+                    touchStartY = event.getY();
+                    touchStartTime = SystemClock.uptimeMillis();
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    float dx = event.getX() - touchStartX;
+                    float dy = event.getY() - touchStartY;
+                    long dur = SystemClock.uptimeMillis() - touchStartTime;
 
-                if (dy > 60 && dur < 250 && Math.abs(dx) < 50) {
-                    hardDrop();
-                } else if (Math.hypot(dx, dy) < 20 && dur < 250) {
-                    rotatePiece();
-                } else if (Math.abs(dx) > 35) {
-                    if (dx > 0) moveRight();
-                    else moveLeft();
-                }
-                return true;
+                    if (dy > 60 && dur < 250 && Math.abs(dx) < 50) {
+                        hardDrop();
+                    } else if (Math.hypot(dx, dy) < 20 && dur < 250) {
+                        rotatePiece();
+                    } else if (Math.abs(dx) > 35) {
+                        if (dx > 0) moveRight();
+                        else moveLeft();
+                    }
+                    return true;
+            }
+        } catch (Throwable t) {
+            t.printStackTrace();
         }
         return super.onTouchEvent(event);
     }

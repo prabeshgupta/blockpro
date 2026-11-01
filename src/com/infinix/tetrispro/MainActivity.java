@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Vibrator;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
@@ -37,6 +38,14 @@ public class MainActivity extends Activity implements TetrisView.GameListener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Global crash guard: prevent silent unexpected process death
+        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+            @Override
+            public void uncaughtException(Thread t, Throwable e) {
+                Log.e("BlockPro", "Caught unexpected exception on " + t.getName(), e);
+            }
+        });
 
         try {
             requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -131,14 +140,18 @@ public class MainActivity extends Activity implements TetrisView.GameListener {
         btnPause.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                tetrisView.togglePause();
-                boolean isPaused = tetrisView.isPaused();
-                btnPause.setImageResource(isPaused ? 
-                    android.R.drawable.ic_media_play : android.R.drawable.ic_media_pause);
-                if (isPaused) {
-                    pauseMusic();
-                } else {
-                    startMusic();
+                try {
+                    tetrisView.togglePause();
+                    boolean isPaused = tetrisView.isPaused();
+                    btnPause.setImageResource(isPaused ? 
+                        android.R.drawable.ic_media_play : android.R.drawable.ic_media_pause);
+                    if (isPaused) {
+                        pauseMusic();
+                    } else {
+                        startMusic();
+                    }
+                } catch (Throwable t) {
+                    t.printStackTrace();
                 }
             }
         });
@@ -182,6 +195,7 @@ public class MainActivity extends Activity implements TetrisView.GameListener {
     }
 
     private void setupRepeatButton(final View btn, final Runnable action, final long repeatInterval, final long initialDelay) {
+        if (btn == null) return;
         btn.setOnTouchListener(new View.OnTouchListener() {
             private Runnable repeatRunnable;
 
@@ -193,11 +207,15 @@ public class MainActivity extends Activity implements TetrisView.GameListener {
                         try {
                             v.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
                         } catch (Throwable ignored) {}
-                        action.run();
+                        if (repeatRunnable != null) {
+                            handler.removeCallbacks(repeatRunnable);
+                            repeatRunnable = null;
+                        }
+                        try { action.run(); } catch (Throwable ignored) {}
                         repeatRunnable = new Runnable() {
                             @Override
                             public void run() {
-                                action.run();
+                                try { action.run(); } catch (Throwable ignored) {}
                                 handler.postDelayed(this, repeatInterval);
                             }
                         };
@@ -218,6 +236,7 @@ public class MainActivity extends Activity implements TetrisView.GameListener {
     }
 
     private void setupInstantButton(final View btn, final Runnable action) {
+        if (btn == null) return;
         btn.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -227,7 +246,7 @@ public class MainActivity extends Activity implements TetrisView.GameListener {
                         try {
                             v.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
                         } catch (Throwable ignored) {}
-                        action.run();
+                        try { action.run(); } catch (Throwable ignored) {}
                         return true;
                     case MotionEvent.ACTION_UP:
                     case MotionEvent.ACTION_CANCEL:
@@ -240,83 +259,93 @@ public class MainActivity extends Activity implements TetrisView.GameListener {
     }
 
     private void showLevelSliderDialog() {
+        if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+            return;
+        }
         pauseMusic();
-        final Dialog dialog = new Dialog(this, AlertDialog.THEME_DEVICE_DEFAULT_DARK);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(R.layout.dialog_level_slider);
-        
-        Window dw = dialog.getWindow();
-        if (dw != null) {
-            dw.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            // Prevent dialog from dropping activity's immersive fullscreen
-            dw.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
-            dw.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-            dw.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                WindowManager.LayoutParams lp = dw.getAttributes();
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
-                } else {
-                    lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        try {
+            final Dialog dialog = new Dialog(this, AlertDialog.THEME_DEVICE_DEFAULT_DARK);
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+            dialog.setContentView(R.layout.dialog_level_slider);
+            
+            Window dw = dialog.getWindow();
+            if (dw != null) {
+                dw.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                dw.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
+                dw.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+                dw.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    WindowManager.LayoutParams lp = dw.getAttributes();
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+                    } else {
+                        lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+                    }
+                    dw.setAttributes(lp);
                 }
-                dw.setAttributes(lp);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    dw.setDecorFitsSystemWindows(false);
+                }
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                dw.setDecorFitsSystemWindows(false);
+
+            final TextView txtLevel = dialog.findViewById(R.id.txt_dialog_level);
+            final TextView txtSpeed = dialog.findViewById(R.id.txt_dialog_speed);
+            final SeekBar seekLevel = dialog.findViewById(R.id.seek_level);
+            final Button btnStart = dialog.findViewById(R.id.btn_start_game);
+
+            final String[] speedNames = new String[]{
+                "Starter Speed (1000ms)",
+                "Casual Speed (850ms)",
+                "Easy Speed (720ms)",
+                "Moderate Speed (600ms)",
+                "Intermediate Speed (490ms)",
+                "Brisk Speed (400ms)",
+                "Fast Speed (320ms)",
+                "Intense Speed (250ms)",
+                "Expert Speed (190ms)",
+                "Hyper Speed (140ms)"
+            };
+
+            seekLevel.setProgress(selectedLevel - 1);
+            txtLevel.setText("LEVEL " + selectedLevel);
+            txtSpeed.setText(speedNames[selectedLevel - 1]);
+
+            seekLevel.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    selectedLevel = progress + 1;
+                    txtLevel.setText("LEVEL " + selectedLevel);
+                    txtSpeed.setText(speedNames[progress]);
+                }
+                @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+                @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+            });
+
+            btnStart.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    try {
+                        dialog.dismiss();
+                        hideSystemUI();
+                        tetrisView.startNewGame(selectedLevel);
+                        startMusic();
+                    } catch (Throwable t) {
+                        t.printStackTrace();
+                    }
+                }
+            });
+
+            dialog.setCancelable(false);
+            dialog.show();
+
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
+                hideSystemUI(dialog.getWindow());
             }
+            hideSystemUI();
+        } catch (Throwable t) {
+            t.printStackTrace();
         }
-
-        final TextView txtLevel = dialog.findViewById(R.id.txt_dialog_level);
-        final TextView txtSpeed = dialog.findViewById(R.id.txt_dialog_speed);
-        final SeekBar seekLevel = dialog.findViewById(R.id.seek_level);
-        final Button btnStart = dialog.findViewById(R.id.btn_start_game);
-
-        final String[] speedNames = new String[]{
-            "Starter Speed (1000ms)",
-            "Casual Speed (850ms)",
-            "Easy Speed (720ms)",
-            "Moderate Speed (600ms)",
-            "Intermediate Speed (490ms)",
-            "Brisk Speed (400ms)",
-            "Fast Speed (320ms)",
-            "Intense Speed (250ms)",
-            "Expert Speed (190ms)",
-            "Hyper Speed (140ms)"
-        };
-
-        seekLevel.setProgress(selectedLevel - 1);
-        txtLevel.setText("LEVEL " + selectedLevel);
-        txtSpeed.setText(speedNames[selectedLevel - 1]);
-
-        seekLevel.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                selectedLevel = progress + 1;
-                txtLevel.setText("LEVEL " + selectedLevel);
-                txtSpeed.setText(speedNames[progress]);
-            }
-            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
-        });
-
-        btnStart.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                dialog.dismiss();
-                hideSystemUI();
-                tetrisView.startNewGame(selectedLevel);
-                startMusic();
-            }
-        });
-
-        dialog.setCancelable(false);
-        dialog.show();
-
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
-            hideSystemUI(dialog.getWindow());
-        }
-        hideSystemUI();
     }
 
     @Override
@@ -324,9 +353,11 @@ public class MainActivity extends Activity implements TetrisView.GameListener {
         handler.post(new Runnable() {
             @Override
             public void run() {
-                if (txtScore != null) {
-                    txtScore.setText(String.format("%,d", score));
-                }
+                try {
+                    if (txtScore != null) {
+                        txtScore.setText(String.format("%,d", score));
+                    }
+                } catch (Throwable ignored) {}
             }
         });
     }
@@ -336,9 +367,11 @@ public class MainActivity extends Activity implements TetrisView.GameListener {
         handler.post(new Runnable() {
             @Override
             public void run() {
-                if (nextPieceView != null) {
-                    nextPieceView.setPiece(next);
-                }
+                try {
+                    if (nextPieceView != null) {
+                        nextPieceView.setPiece(next);
+                    }
+                } catch (Throwable ignored) {}
             }
         });
     }
@@ -349,21 +382,28 @@ public class MainActivity extends Activity implements TetrisView.GameListener {
         handler.post(new Runnable() {
             @Override
             public void run() {
-                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this, AlertDialog.THEME_DEVICE_DEFAULT_DARK);
-                builder.setTitle("GAME OVER");
-                builder.setMessage("Final Score: " + String.format("%,d", finalScore));
-                builder.setPositiveButton("PLAY AGAIN", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        showLevelSliderDialog();
-                    }
-                });
-                builder.setCancelable(false);
-                AlertDialog d = builder.show();
-                if (d.getWindow() != null) {
-                    hideSystemUI(d.getWindow());
+                if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+                    return;
                 }
-                hideSystemUI();
+                try {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this, AlertDialog.THEME_DEVICE_DEFAULT_DARK);
+                    builder.setTitle("GAME OVER");
+                    builder.setMessage("Final Score: " + String.format("%,d", finalScore));
+                    builder.setPositiveButton("PLAY AGAIN", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            showLevelSliderDialog();
+                        }
+                    });
+                    builder.setCancelable(false);
+                    AlertDialog d = builder.show();
+                    if (d != null && d.getWindow() != null) {
+                        hideSystemUI(d.getWindow());
+                    }
+                    hideSystemUI();
+                } catch (Throwable t) {
+                    t.printStackTrace();
+                }
             }
         });
     }
@@ -431,6 +471,7 @@ public class MainActivity extends Activity implements TetrisView.GameListener {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        handler.removeCallbacksAndMessages(null);
         if (mediaPlayer != null) {
             try {
                 mediaPlayer.stop();
