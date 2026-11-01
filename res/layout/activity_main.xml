@@ -9,25 +9,29 @@
     android:weightSum="100">
 
     <!-- ========================================================
-         TOP 4%: COMPACT HUD BAR (ZERO TOP GAP, TOTAL FULLSCREEN)
+         TOP SECTION: HUD BAR WITH INCREASED PADDING & MARGIN
          Left: Score | Right: Next piece (no title) + Pause icon
+         Comfortable breathing room below physical screen edge & camera
          ======================================================== -->
     <LinearLayout
         android:id="@+id/top_hud_bar"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="4"
+        android:layout_weight="6"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingHorizontal="16dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="6dp"
+        android:paddingHorizontal="18dp"
         android:fitsSystemWindows="false"
         android:background="#090A0E">
 
-        <!-- Left: Score Readout -->
+        <!-- Left: Score Readout with margin -->
         <LinearLayout
             android:layout_width="wrap_content"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:gravity="center_vertical"
+            android:layout_marginStart="2dp"
             android:orientation="horizontal">
 
             <TextView
@@ -56,19 +60,20 @@
             android:layout_height="1dp"
             android:layout_weight="1" />
 
-        <!-- Right: Next Piece (NO TITLE) + Pause Icon -->
+        <!-- Right: Next Piece (NO TITLE) + Pause Icon with margin -->
         <LinearLayout
             android:layout_width="wrap_content"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:gravity="center_vertical"
+            android:layout_marginEnd="2dp"
             android:orientation="horizontal">
 
             <!-- Next Piece Preview (Clean block preview without text) -->
             <com.infinix.tetrispro.NextPieceView
                 android:id="@+id/next_piece_view"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_marginEnd="8dp" />
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:layout_marginEnd="10dp" />
 
             <!-- Pause Icon -->
             <ImageButton
@@ -89,13 +94,13 @@
         android:background="#1A1D2A" />
 
     <!-- ========================================================
-         MIDDLE 80%: FULL WIDTH 100% EDGE-TO-EDGE GAME CANVAS
+         MIDDLE 79%: FULL WIDTH 100% EDGE-TO-EDGE GAME CANVAS
          ======================================================== -->
     <com.infinix.tetrispro.TetrisView
         android:id="@+id/tetris_view"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="80" />
+        android:layout_weight="79" />
 
     <!-- Thin 1px divider between Game and Controls -->
     <View
@@ -104,7 +109,7 @@
         android:background="#1E2230" />
 
     <!-- ========================================================
-         BOTTOM 16%: ERGONOMIC EXPANDED SQUARE CONTROLS
+         BOTTOM 15%: ERGONOMIC EXPANDED SQUARE CONTROLS
          All 5 Buttons are dynamically sized to max square width (~72-76dp)
          Centered with generous top & bottom margins
          ======================================================== -->
@@ -112,7 +117,7 @@
         android:id="@+id/bottom_controls_bar"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="16"
+        android:layout_weight="15"
         android:orientation="horizontal"
         android:background="#0D0E14"
         android:gravity="center"
