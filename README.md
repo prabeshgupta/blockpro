@@ -1,11 +1,11 @@
-# 🕹️ Tetris Pro — Pure Native Android Game
+# 🕹️ BlockPro — Pure Native Android Game
 
-A sleek, **100% Free, Zero Ads** pure native Android Tetris game built in Java with hardware-accelerated Canvas rendering, responsive touch controls, dynamic square buttons, authentic arcade audio, and zero web wrappers.
+A sleek, **100% Free, Zero Ads** pure native Android block puzzle game built in Java with hardware-accelerated Canvas rendering, responsive touch controls, dynamic square buttons, authentic arcade audio, and zero web wrappers.
 
-[![Release](https://img.shields.io/github/v/release/prabeshgupta/tetris-android?color=00E5FF&label=Latest%20Release)](https://github.com/prabeshgupta/tetris-android/releases)
-[![No Ads](https://img.shields.io/badge/Ads-Zero%20%2F%20No%20Ads-brightgreen)](https://github.com/prabeshgupta/tetris-android)
-[![Platform](https://img.shields.io/badge/Platform-Android%207.0%2B%20(API%2024%2B)-3DDC84?logo=android&logoColor=white)](https://github.com/prabeshgupta/tetris-android)
-[![Native](https://img.shields.io/badge/Code-100%25%20Pure%20Java%20Native-orange)](https://github.com/prabeshgupta/tetris-android)
+[![Release](https://img.shields.io/github/v/release/prabeshgupta/blockpro?color=00E5FF&label=Latest%20Release)](https://github.com/prabeshgupta/blockpro/releases)
+[![No Ads](https://img.shields.io/badge/Ads-Zero%20%2F%20No%20Ads-brightgreen)](https://github.com/prabeshgupta/blockpro)
+[![Platform](https://img.shields.io/badge/Platform-Android%207.0%2B%20(API%2024%2B)-3DDC84?logo=android&logoColor=white)](https://github.com/prabeshgupta/blockpro)
+[![Native](https://img.shields.io/badge/Code-100%25%20Pure%20Java%20Native-orange)](https://github.com/prabeshgupta/blockpro)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
@@ -14,7 +14,7 @@ A sleek, **100% Free, Zero Ads** pure native Android Tetris game built in Java w
 
 <p align="center">
   <img src="screenshot_level.jpg" width="310" alt="Starting Level Selector" style="border-radius: 16px; margin-right: 12px;" />
-  <img src="screenshot_gameplay.jpg" width="310" alt="Tetris Pro Native Gameplay on Android" style="border-radius: 16px;" />
+  <img src="screenshot_gameplay.jpg" width="310" alt="BlockPro Native Gameplay on Android" style="border-radius: 16px;" />
 </p>
 
 ---
@@ -30,8 +30,8 @@ A sleek, **100% Free, Zero Ads** pure native Android Tetris game built in Java w
   - **Tactile Feedback**: Glowing neon pressed states and subtle haptic vibration on every tap.
   - **DAS (Delayed Auto Shift)**: Fluid, rapid piece shifting when holding left/right (55ms interval).
 - 🎵 **Arcade Stereo Soundtrack & SFX**:
-  - Full-length **Arcade Stereo Band** arrangement loop of the classic Tetris theme.
-  - Low-latency `SoundPool` sound effects for landing/locking pieces, line clears, 4-line Tetris fanfares, movement, and drops.
+  - Full-length **Arcade Stereo Band** arrangement loop.
+  - Low-latency `SoundPool` sound effects for landing/locking pieces, line clears, 4-line fanfares, movement, and drops.
 - 🎚️ **Customizable Starting Level**: Speed slider (Level 1 to Level 10) with real-time speed presets (1000ms down to 140ms per drop).
 - 💎 **Safe-Zone Adaptive Icon**: 4-color gem T-piece icon padded within the 52% safe zone for all Android launchers.
 
@@ -41,10 +41,10 @@ A sleek, **100% Free, Zero Ads** pure native Android Tetris game built in Java w
 
 Get the latest installable native APK from the Releases section:
 
-👉 **[Download Tetrispro.apk](https://github.com/prabeshgupta/tetris-android/releases/latest/download/Tetrispro.apk)**
+👉 **[Download Blockpro.apk](https://github.com/prabeshgupta/blockpro/releases/latest/download/Blockpro.apk)**
 
 ### Installation Instructions
-1. Download `Tetrispro.apk` directly to your Android phone.
+1. Download `Blockpro.apk` directly to your Android phone.
 2. Tap the downloaded APK in your browser or file manager.
 3. If prompted, allow **"Install unknown apps"** for your browser/file manager.
 4. Tap **Install** and start playing!
@@ -73,7 +73,7 @@ This project builds cleanly using standard Android SDK CLI tools:
 python build_apk.py
 ```
 
-The compiled and signed APK will be output at `./Tetrispro.apk`.
+The compiled and signed APK will be output at `./Blockpro.apk`.
 
 ---
 

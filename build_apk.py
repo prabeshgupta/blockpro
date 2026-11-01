@@ -45,7 +45,7 @@ def main():
     compiled_res = os.path.join(BUILD_DIR, "compiled_res.zip")
     unaligned_apk = os.path.join(BUILD_DIR, "unaligned.apk")
     aligned_apk = os.path.join(BUILD_DIR, "aligned.apk")
-    final_apk = os.path.join(PROJECT_DIR, "Tetrispro.apk")
+    final_apk = os.path.join(PROJECT_DIR, "Blockpro.apk")
 
     # Step 1: AAPT2 Compile resources
     run([AAPT2, "compile", "--dir", "res", "-o", compiled_res], "Compiling Android resources")
